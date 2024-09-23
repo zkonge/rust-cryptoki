@@ -33,9 +33,6 @@ fn sign_verify() -> TestResult {
     // log in the session
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
-    // get mechanism
-    let mechanism = Mechanism::RsaPkcsKeyPairGen;
-
     let public_exponent: Vec<u8> = vec![0x01, 0x00, 0x01];
     let modulus_bits = 1024;
 
@@ -51,17 +48,20 @@ fn sign_verify() -> TestResult {
     let priv_key_template = vec![Attribute::Token(true)];
 
     // generate a key pair
-    let (public, private) =
-        session.generate_key_pair(&mechanism, &pub_key_template, &priv_key_template)?;
+    let (public, private) = session.generate_key_pair(
+        Mechanism::RsaPkcsKeyPairGen,
+        &pub_key_template,
+        &priv_key_template,
+    )?;
 
     // data to sign
     let data = [0xFF, 0x55, 0xDD];
 
     // sign something with it
-    let signature = session.sign(&Mechanism::RsaPkcs, private, &data)?;
+    let signature = session.sign(Mechanism::RsaPkcs, private, &data)?;
 
     // verify the signature
-    session.verify(&Mechanism::RsaPkcs, public, &data, &signature)?;
+    session.verify(Mechanism::RsaPkcs, public, &data, &signature)?;
 
     // delete keys
     session.destroy_object(public)?;
@@ -79,8 +79,6 @@ fn sign_verify_ed25519() -> TestResult {
 
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
-    let mechanism = Mechanism::EccEdwardsKeyPairGen;
-
     let pub_key_template = vec![
         Attribute::Token(true),
         Attribute::Private(false),
@@ -94,14 +92,17 @@ fn sign_verify_ed25519() -> TestResult {
 
     let priv_key_template = vec![Attribute::Token(true)];
 
-    let (public, private) =
-        session.generate_key_pair(&mechanism, &pub_key_template, &priv_key_template)?;
+    let (public, private) = session.generate_key_pair(
+        Mechanism::EccEdwardsKeyPairGen,
+        &pub_key_template,
+        &priv_key_template,
+    )?;
 
     let data = [0xFF, 0x55, 0xDD];
 
-    let signature = session.sign(&Mechanism::Eddsa, private, &data)?;
+    let signature = session.sign(Mechanism::Eddsa, private, &data)?;
 
-    session.verify(&Mechanism::Eddsa, public, &data, &signature)?;
+    session.verify(Mechanism::Eddsa, public, &data, &signature)?;
 
     session.destroy_object(public)?;
     session.destroy_object(private)?;
@@ -120,9 +121,6 @@ fn encrypt_decrypt() -> TestResult {
     // log in the session
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
-    // get mechanism
-    let mechanism = Mechanism::RsaPkcsKeyPairGen;
-
     let public_exponent: Vec<u8> = vec![0x01, 0x00, 0x01];
     let modulus_bits = 1024;
 
@@ -139,17 +137,20 @@ fn encrypt_decrypt() -> TestResult {
     let priv_key_template = vec![Attribute::Token(true), Attribute::Decrypt(true)];
 
     // generate a key pair
-    let (public, private) =
-        session.generate_key_pair(&mechanism, &pub_key_template, &priv_key_template)?;
+    let (public, private) = session.generate_key_pair(
+        Mechanism::RsaPkcsKeyPairGen,
+        &pub_key_template,
+        &priv_key_template,
+    )?;
 
     // data to encrypt
     let data = vec![0xFF, 0x55, 0xDD];
 
     // encrypt something with it
-    let encrypted_data = session.encrypt(&Mechanism::RsaPkcs, public, &data)?;
+    let encrypted_data = session.encrypt(Mechanism::RsaPkcs, public, &data)?;
 
     // decrypt
-    let decrypted_data = session.decrypt(&Mechanism::RsaPkcs, private, &encrypted_data)?;
+    let decrypted_data = session.decrypt(Mechanism::RsaPkcs, private, &encrypted_data)?;
 
     // The decrypted buffer is bigger than the original one.
     assert_eq!(data, decrypted_data);
@@ -171,9 +172,6 @@ fn derive_key() -> TestResult {
 
     // log in the session
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
-
-    // get mechanism
-    let mechanism = Mechanism::EccKeyPairGen;
 
     let secp256r1_oid: Vec<u8> = vec![0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07];
 
@@ -198,8 +196,11 @@ fn derive_key() -> TestResult {
     ];
 
     // generate a key pair
-    let (public, private) =
-        session.generate_key_pair(&mechanism, &pub_key_template, &priv_key_template)?;
+    let (public, private) = session.generate_key_pair(
+        Mechanism::EccKeyPairGen,
+        &pub_key_template,
+        &priv_key_template,
+    )?;
 
     let ec_point_attribute = session
         .get_attributes(public, &[AttributeType::EcPoint])?
@@ -216,7 +217,7 @@ fn derive_key() -> TestResult {
     let params = Ecdh1DeriveParams::new(EcKdf::null(), &ec_point);
 
     let shared_secret = session.derive_key(
-        &Mechanism::Ecdh1Derive(params),
+        Mechanism::Ecdh1Derive(params),
         private,
         &[
             Attribute::Class(ObjectClass::SECRET_KEY),
@@ -338,7 +339,7 @@ fn session_find_objects() -> testresult::TestResult {
 
         // generate a secret key
         let _key = session
-            .generate_key(&Mechanism::Des3KeyGen, &key_template)
+            .generate_key(Mechanism::Des3KeyGen, &key_template)
             .unwrap();
     });
 
@@ -387,7 +388,7 @@ fn session_objecthandle_iterator() -> testresult::TestResult {
         ];
 
         // generate a secret key
-        session.generate_key(&Mechanism::Des3KeyGen, &key_template)?;
+        session.generate_key(Mechanism::Des3KeyGen, &key_template)?;
     }
 
     // retrieve these keys using this template
@@ -478,14 +479,14 @@ fn wrap_and_unwrap_key() {
 
     // generate a secret key that will be wrapped
     let key_to_be_wrapped = session
-        .generate_key(&Mechanism::Des3KeyGen, &key_to_be_wrapped_template)
+        .generate_key(Mechanism::Des3KeyGen, &key_to_be_wrapped_template)
         .unwrap();
 
     // Des3Ecb input length must be a multiple of 8
     // see: PKCS#11 spec Table 10-10, DES-ECB Key And Data Length Constraints
     let encrypted_with_original = session
         .encrypt(
-            &Mechanism::Des3Ecb,
+            Mechanism::Des3Ecb,
             key_to_be_wrapped,
             &[1, 2, 3, 4, 5, 6, 7, 8],
         )
@@ -506,20 +507,20 @@ fn wrap_and_unwrap_key() {
 
     let (wrapping_key, unwrapping_key) = session
         .generate_key_pair(
-            &Mechanism::RsaPkcsKeyPairGen,
+            Mechanism::RsaPkcsKeyPairGen,
             &pub_key_template,
             &priv_key_template,
         )
         .unwrap();
 
     let wrapped_key = session
-        .wrap_key(&Mechanism::RsaPkcs, wrapping_key, key_to_be_wrapped)
+        .wrap_key(Mechanism::RsaPkcs, wrapping_key, key_to_be_wrapped)
         .unwrap();
     assert_eq!(wrapped_key.len(), 128);
 
     let unwrapped_key = session
         .unwrap_key(
-            &Mechanism::RsaPkcs,
+            Mechanism::RsaPkcs,
             unwrapping_key,
             &wrapped_key,
             &[
@@ -533,11 +534,7 @@ fn wrap_and_unwrap_key() {
         .unwrap();
 
     let encrypted_with_unwrapped = session
-        .encrypt(
-            &Mechanism::Des3Ecb,
-            unwrapped_key,
-            &[1, 2, 3, 4, 5, 6, 7, 8],
-        )
+        .encrypt(Mechanism::Des3Ecb, unwrapped_key, &[1, 2, 3, 4, 5, 6, 7, 8])
         .unwrap();
     assert_eq!(encrypted_with_original, encrypted_with_unwrapped);
 }
@@ -718,9 +715,6 @@ fn get_attribute_info_test() -> TestResult {
     // log in the session
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
-    // get mechanism
-    let mechanism = Mechanism::RsaPkcsKeyPairGen;
-
     let public_exponent: Vec<u8> = vec![0x01, 0x00, 0x01];
     let modulus_bits = 2048;
 
@@ -740,8 +734,11 @@ fn get_attribute_info_test() -> TestResult {
     ];
 
     // generate a key pair
-    let (public, private) =
-        session.generate_key_pair(&mechanism, &pub_key_template, &priv_key_template)?;
+    let (public, private) = session.generate_key_pair(
+        Mechanism::RsaPkcsKeyPairGen,
+        &pub_key_template,
+        &priv_key_template,
+    )?;
 
     let pub_attribs = vec![AttributeType::PublicExponent, AttributeType::Modulus];
     let mut priv_attribs = pub_attribs.clone();
@@ -893,9 +890,6 @@ fn aes_key_attributes_test() -> TestResult {
     // log in the session
     session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
-    // get mechanism
-    let mechanism = Mechanism::AesKeyGen;
-
     // pub key template
     let key_template = vec![
         Attribute::Class(ObjectClass::SECRET_KEY),
@@ -908,7 +902,7 @@ fn aes_key_attributes_test() -> TestResult {
     ];
 
     // generate a key pair
-    let key = session.generate_key(&mechanism, &key_template)?;
+    let key = session.generate_key(Mechanism::AesKeyGen, &key_template)?;
 
     let mut attributes_result =
         session.get_attributes(key, &[AttributeType::EndDate, AttributeType::StartDate])?;
@@ -1014,7 +1008,7 @@ fn session_copy_object() -> TestResult {
     rw_session.login(UserType::User, Some(&AuthPin::new(USER_PIN.into())))?;
 
     // create a key object
-    let object = rw_session.generate_key(&Mechanism::AesKeyGen, &aes128_template)?;
+    let object = rw_session.generate_key(Mechanism::AesKeyGen, &aes128_template)?;
 
     // copy the object without a template
     let copy = rw_session.copy_object(object, &[])?;
@@ -1060,8 +1054,7 @@ fn aes_cbc_encrypt() -> TestResult {
         Attribute::Encrypt(true),
     ];
     let key_handle = session.create_object(&template)?;
-    let mechanism = Mechanism::AesCbc(iv);
-    let cipher = session.encrypt(&mechanism, key_handle, &plain)?;
+    let cipher = session.encrypt(Mechanism::AesCbc(iv), key_handle, &plain)?;
     assert_eq!(expected_cipher[..], cipher[..]);
     Ok(())
 }
@@ -1091,8 +1084,7 @@ fn aes_cbc_pad_encrypt() -> TestResult {
         Attribute::Encrypt(true),
     ];
     let key_handle = session.create_object(&template)?;
-    let mechanism = Mechanism::AesCbcPad(iv);
-    let cipher = session.encrypt(&mechanism, key_handle, &plain)?;
+    let cipher = session.encrypt(Mechanism::AesCbcPad(iv), key_handle, &plain)?;
     assert_eq!(expected_cipher[..], cipher[..]);
     Ok(())
 }
@@ -1119,7 +1111,7 @@ fn update_attributes_key() -> TestResult {
     let priv_key_template = vec![Attribute::Token(true), Attribute::Extractable(true)];
 
     let (_public_key, private_key) = session.generate_key_pair(
-        &Mechanism::RsaPkcsKeyPairGen,
+        Mechanism::RsaPkcsKeyPairGen,
         &pub_key_template,
         &priv_key_template,
     )?;
@@ -1159,7 +1151,7 @@ fn sha256_digest() -> TestResult {
         0x74, 0x63, 0x8b, 0x29, 0x57, 0x07, 0xef, 0x73, 0xfb, 0x2c, 0x6b, 0xb7, 0xf8, 0x8e, 0x89,
         0x92, 0x9f,
     ];
-    let have = session.digest(&Mechanism::Sha256, &data)?;
+    let have = session.digest(Mechanism::Sha256, &data)?;
     assert_eq!(want[..], have[..]);
 
     Ok(())
@@ -1192,8 +1184,11 @@ fn aes_gcm_no_aad() -> TestResult {
         Attribute::Encrypt(true),
     ];
     let key_handle = session.create_object(&template)?;
-    let mechanism = Mechanism::AesGcm(GcmParams::new(&mut iv, &aad, 96.into()));
-    let cipher_and_tag = session.encrypt(&mechanism, key_handle, &plain)?;
+    let cipher_and_tag = session.encrypt(
+        Mechanism::AesGcm(GcmParams::new(&mut iv, &aad, 96.into())),
+        key_handle,
+        &plain,
+    )?;
     assert_eq!(expected_cipher_and_tag[..], cipher_and_tag[..]);
     Ok(())
 }
@@ -1223,8 +1218,11 @@ fn aes_gcm_with_aad() -> TestResult {
         Attribute::Encrypt(true),
     ];
     let key_handle = session.create_object(&template)?;
-    let mechanism = Mechanism::AesGcm(GcmParams::new(&mut iv, &aad, 96.into()));
-    let cipher_and_tag = session.encrypt(&mechanism, key_handle, &plain)?;
+    let cipher_and_tag = session.encrypt(
+        Mechanism::AesGcm(GcmParams::new(&mut iv, &aad, 96.into())),
+        key_handle,
+        &plain,
+    )?;
     assert_eq!(expected_cipher_and_tag[..], cipher_and_tag[..]);
     Ok(())
 }
@@ -1238,17 +1236,15 @@ fn rsa_pkcs_oaep_empty() -> TestResult {
 
     let pub_key_template = [Attribute::ModulusBits(2048.into())];
     let (pubkey, privkey) =
-        session.generate_key_pair(&Mechanism::RsaPkcsKeyPairGen, &pub_key_template, &[])?;
+        session.generate_key_pair(Mechanism::RsaPkcsKeyPairGen, &pub_key_template, &[])?;
     let oaep = PkcsOaepParams::new(
         MechanismType::SHA1,
         PkcsMgfType::MGF1_SHA1,
         PkcsOaepSource::empty(),
     );
     assert_eq!(MechanismType::SHA1, oaep.hash_alg());
-    let encrypt_mechanism: Mechanism = Mechanism::RsaPkcsOaep(oaep);
-    let encrypted_data = session.encrypt(&encrypt_mechanism, pubkey, b"Hello")?;
-
-    let decrypted_data = session.decrypt(&encrypt_mechanism, privkey, &encrypted_data)?;
+    let encrypted_data = session.encrypt(Mechanism::RsaPkcsOaep(oaep), pubkey, b"Hello")?;
+    let decrypted_data = session.decrypt(Mechanism::RsaPkcsOaep(oaep), privkey, &encrypted_data)?;
     let decrypted = String::from_utf8(decrypted_data)?;
     assert_eq!("Hello", decrypted);
 
@@ -1265,16 +1261,14 @@ fn rsa_pkcs_oaep_with_data() -> TestResult {
 
     let pub_key_template = [Attribute::ModulusBits(2048.into())];
     let (pubkey, privkey) =
-        session.generate_key_pair(&Mechanism::RsaPkcsKeyPairGen, &pub_key_template, &[])?;
+        session.generate_key_pair(Mechanism::RsaPkcsKeyPairGen, &pub_key_template, &[])?;
     let oaep = PkcsOaepParams::new(
         MechanismType::SHA1,
         PkcsMgfType::MGF1_SHA1,
         PkcsOaepSource::data_specified(&[1, 2, 3, 4, 5, 6, 7, 8]),
     );
-    let encrypt_mechanism: Mechanism = Mechanism::RsaPkcsOaep(oaep);
-    let encrypted_data = session.encrypt(&encrypt_mechanism, pubkey, b"Hello")?;
-
-    let decrypted_data = session.decrypt(&encrypt_mechanism, privkey, &encrypted_data)?;
+    let encrypted_data = session.encrypt(Mechanism::RsaPkcsOaep(oaep), pubkey, b"Hello")?;
+    let decrypted_data = session.decrypt(Mechanism::RsaPkcsOaep(oaep), privkey, &encrypted_data)?;
     let decrypted = String::from_utf8(decrypted_data)?;
     assert_eq!("Hello", decrypted);
 
@@ -1331,7 +1325,7 @@ fn generate_generic_secret_key() -> TestResult {
         key_label.clone(),
     ];
 
-    let key = session.generate_key(&Mechanism::GenericSecretKeyGen, &key_template)?;
+    let key = session.generate_key(Mechanism::GenericSecretKeyGen, &key_template)?;
     let attributes_result = session.find_objects(&[key_label])?.remove(0);
     assert_eq!(key, attributes_result);
 
@@ -1361,7 +1355,7 @@ fn ekdf_aes_cbc_encrypt_data() -> TestResult {
     let mut master_key_template = key_template.clone();
     master_key_template.insert(0, master_key_label.clone());
 
-    let master_key = session.generate_key(&Mechanism::AesKeyGen, &master_key_template)?;
+    let master_key = session.generate_key(Mechanism::AesKeyGen, &master_key_template)?;
     assert_eq!(
         master_key,
         session.find_objects(&[master_key_label])?.remove(0)
@@ -1382,7 +1376,7 @@ fn ekdf_aes_cbc_encrypt_data() -> TestResult {
     // =======================================================================================================
     let aes_cbc_derive_params = AesCbcDeriveParams::new([0u8; 16], [1u8; 32].as_slice());
     let derived_key = session.derive_key(
-        &Mechanism::AesCbcEncryptData(aes_cbc_derive_params),
+        Mechanism::AesCbcEncryptData(aes_cbc_derive_params),
         master_key,
         &derived_key_template,
     )?;
@@ -1411,13 +1405,13 @@ fn sign_verify_sha256_hmac() -> TestResult {
         Attribute::ValueLen(256.into()),
     ];
 
-    let private = session.generate_key(&Mechanism::GenericSecretKeyGen, &priv_key_template)?;
+    let private = session.generate_key(Mechanism::GenericSecretKeyGen, &priv_key_template)?;
 
     let data = vec![0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
 
-    let signature = session.sign(&Mechanism::Sha256Hmac, private, &data)?;
+    let signature = session.sign(Mechanism::Sha256Hmac, private, &data)?;
 
-    session.verify(&Mechanism::Sha256Hmac, private, &data, &signature)?;
+    session.verify(Mechanism::Sha256Hmac, private, &data, &signature)?;
 
     session.destroy_object(private)?;
     Ok(())
@@ -1490,7 +1484,7 @@ fn aes_cmac_sign_impl(key: [u8; 16], message: &[u8], expected_mac: [u8; 16]) -> 
         Attribute::Sign(true),
     ];
     let key = session.create_object(&key_template)?;
-    let signature = session.sign(&Mechanism::AesCMac, key, message)?;
+    let signature = session.sign(Mechanism::AesCMac, key, message)?;
 
     assert_eq!(expected_mac.as_slice(), signature.as_slice());
     Ok(())
@@ -1563,6 +1557,6 @@ fn aes_cmac_verify_impl(key: [u8; 16], message: &[u8], expected_mac: [u8; 16]) -
         Attribute::Verify(true),
     ];
     let key = session.create_object(&key_template)?;
-    session.verify(&Mechanism::AesCMac, key, message, &expected_mac)?;
+    session.verify(Mechanism::AesCMac, key, message, &expected_mac)?;
     Ok(())
 }

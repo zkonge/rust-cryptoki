@@ -12,8 +12,8 @@ use std::convert::TryInto;
 
 impl Session {
     /// Sign data in single-part
-    pub fn sign(&self, mechanism: &Mechanism, key: ObjectHandle, data: &[u8]) -> Result<Vec<u8>> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+    pub fn sign(&self, mut mechanism: Mechanism, key: ObjectHandle, data: &[u8]) -> Result<Vec<u8>> {
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut signature_len = 0;
 
         unsafe {
@@ -59,12 +59,12 @@ impl Session {
     /// Verify data in single-part
     pub fn verify(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         key: ObjectHandle,
         data: &[u8],
         signature: &[u8],
     ) -> Result<()> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
 
         unsafe {
             Rv::from(get_pkcs11!(self.client(), C_VerifyInit)(

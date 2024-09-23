@@ -14,10 +14,10 @@ impl Session {
     /// Generate a secret key
     pub fn generate_key(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         template: &[Attribute],
     ) -> Result<ObjectHandle> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut template: Vec<CK_ATTRIBUTE> = template.iter().map(|attr| attr.into()).collect();
         let mut handle = 0;
         unsafe {
@@ -37,11 +37,11 @@ impl Session {
     /// Generate a public/private key pair
     pub fn generate_key_pair(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         pub_key_template: &[Attribute],
         priv_key_template: &[Attribute],
     ) -> Result<(ObjectHandle, ObjectHandle)> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut pub_key_template: Vec<CK_ATTRIBUTE> =
             pub_key_template.iter().map(|attr| attr.into()).collect();
         let mut priv_key_template: Vec<CK_ATTRIBUTE> =
@@ -71,11 +71,11 @@ impl Session {
     /// Derives a key from a base key
     pub fn derive_key(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         base_key: ObjectHandle,
         template: &[Attribute],
     ) -> Result<ObjectHandle> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut template: Vec<CK_ATTRIBUTE> = template.iter().map(|attr| attr.into()).collect();
         let mut handle = 0;
         unsafe {
@@ -96,11 +96,11 @@ impl Session {
     /// Wrap key
     pub fn wrap_key(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         wrapping_key: ObjectHandle,
         key: ObjectHandle,
     ) -> Result<Vec<u8>> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         unsafe {
             let mut wrapped_key_len = 0;
 
@@ -133,12 +133,12 @@ impl Session {
     /// Unwrap previously wrapped key
     pub fn unwrap_key(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         unwrapping_key: ObjectHandle,
         wrapped_key: &[u8],
         template: &[Attribute],
     ) -> Result<ObjectHandle> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut template: Vec<CK_ATTRIBUTE> = template.iter().map(|attr| attr.into()).collect();
         let mut handle = 0;
         unsafe {

@@ -961,8 +961,8 @@ impl Mechanism<'_> {
     }
 }
 
-impl From<&Mechanism<'_>> for CK_MECHANISM {
-    fn from(mech: &Mechanism) -> Self {
+impl From<&mut Mechanism<'_>> for CK_MECHANISM {
+    fn from(mech: &mut Mechanism) -> Self {
         let mechanism = mech.mechanism_type().into();
         match mech {
             // Mechanisms with parameters

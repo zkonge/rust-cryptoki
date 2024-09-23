@@ -14,11 +14,11 @@ impl Session {
     /// Single-part decryption operation
     pub fn decrypt(
         &self,
-        mechanism: &Mechanism,
+        mut mechanism: Mechanism,
         key: ObjectHandle,
         encrypted_data: &[u8],
     ) -> Result<Vec<u8>> {
-        let mut mechanism: CK_MECHANISM = mechanism.into();
+        let mut mechanism: CK_MECHANISM = (&mut mechanism).into();
         let mut data_len = 0;
 
         unsafe {

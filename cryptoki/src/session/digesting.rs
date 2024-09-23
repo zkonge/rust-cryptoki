@@ -11,8 +11,8 @@ use std::convert::TryInto;
 
 impl Session {
     /// Single-part digesting operation
-    pub fn digest(&self, m: &Mechanism, data: &[u8]) -> Result<Vec<u8>> {
-        let mut mechanism: CK_MECHANISM = m.into();
+    pub fn digest(&self, mut m: Mechanism, data: &[u8]) -> Result<Vec<u8>> {
+        let mut mechanism: CK_MECHANISM = (&mut m).into();
         let mut digest_len = 0;
 
         unsafe {
